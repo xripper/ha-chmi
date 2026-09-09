@@ -1,5 +1,8 @@
 # ČHMÚ pro Home Assistant
 
+[![HACS custom repository](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![Otevřít v HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=xripper&repository=ha-chmi&category=integration)
+
 Integrace otevřených dat **Českého hydrometeorologického ústavu** pro Home
 Assistant. Poskytuje aktuální měření z vybrané stanice, radarový kompozit CZRAD
 složený nad mapou ČR, výstrahy z oficiálního CAP feedu a textovou předpověď pro
@@ -28,7 +31,7 @@ oblačnost – seznam entit se tedy mezi stanicemi hodně liší.
 ### HACS
 
 1. HACS → menu tří teček → **Vlastní repozitáře**
-2. Repozitář `https://github.com/jakubgottwald/ha-chmi`, kategorie **Integrace**
+2. Repozitář `https://github.com/xripper/ha-chmi`, kategorie **Integrace**
 3. Nainstalovat **ČHMÚ** a restartovat Home Assistant
 4. **Nastavení → Zařízení a služby → Přidat integraci → ČHMÚ**
 

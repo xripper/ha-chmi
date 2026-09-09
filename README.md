@@ -1,5 +1,8 @@
 # ČHMÚ for Home Assistant
 
+[![HACS custom repository](https://img.shields.io/badge/HACS-custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=xripper&repository=ha-chmi&category=integration)
+
 Home Assistant integration for open data of the **Czech Hydrometeorological
 Institute** (Český hydrometeorologický ústav). It provides current measurements
 from a station you pick during setup, the CZRAD weather radar composite drawn
@@ -30,7 +33,7 @@ between stations.
 ### HACS
 
 1. HACS → three dot menu → **Custom repositories**
-2. Repository `https://github.com/jakubgottwald/ha-chmi`, category **Integration**
+2. Repository `https://github.com/xripper/ha-chmi`, category **Integration**
 3. Install **ČHMÚ**, then restart Home Assistant
 4. **Settings → Devices & services → Add integration → ČHMÚ**
 

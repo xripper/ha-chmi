@@ -1,12 +1,14 @@
 {
   "domain": "chmi",
   "name": "ČHMÚ",
-  "codeowners": [],
+  "codeowners": [
+    "@xripper"
+  ],
   "config_flow": true,
-  "documentation": "https://github.com/jakubgottwald/ha-chmi",
+  "documentation": "https://github.com/xripper/ha-chmi",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/jakubgottwald/ha-chmi/issues",
+  "issue_tracker": "https://github.com/xripper/ha-chmi/issues",
   "requirements": [
     "Pillow>=10.0.0",
     "astral>=2.2",
