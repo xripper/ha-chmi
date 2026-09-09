@@ -142,6 +142,8 @@ The code is MIT licensed. ČHMÚ data are published under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and every entity
 carries the attribution `Data © Český hydrometeorologický ústav (CC BY 4.0)`.
 The bundled region boundaries in `custom_components/chmi/data/cz_regions.geojson`
-are simplified public administrative boundaries of the Czech Republic.
+are simplified public administrative boundaries of the Czech Republic. The brand
+images in `custom_components/chmi/brand/` show the ČHMÚ logo, which belongs to
+ČHMÚ and is used only to identify the source of the data.
 
 This project is not affiliated with ČHMÚ.

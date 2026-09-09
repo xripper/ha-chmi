@@ -138,6 +138,7 @@ Kód je pod licencí MIT. Data ČHMÚ jsou publikována pod
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) a každá entita nese
 atribuci `Data © Český hydrometeorologický ústav (CC BY 4.0)`. Přiložené hranice
 krajů v `custom_components/chmi/data/cz_regions.geojson` jsou zjednodušené
-veřejné administrativní hranice ČR.
+veřejné administrativní hranice ČR. Obrázky v `custom_components/chmi/brand/`
+zobrazují logo ČHMÚ, které patří ČHMÚ a slouží jen k označení zdroje dat.
 
 Projekt není spojen s ČHMÚ.
