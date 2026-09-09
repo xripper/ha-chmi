@@ -129,7 +129,7 @@ forecast written by ČHMÚ forecasters is provided instead.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 132 tests, fixtures are real ČHMÚ responses
+pytest          # 139 tests, fixtures are real ČHMÚ responses
 ruff check .
 ```
 

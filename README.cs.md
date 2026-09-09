@@ -125,7 +125,7 @@ předpověď psanou meteorology ČHMÚ.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 132 testů, fixtures jsou reálné odpovědi ČHMÚ
+pytest          # 139 testů, fixtures jsou reálné odpovědi ČHMÚ
 ruff check .
 ```
 

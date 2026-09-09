@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
@@ -258,3 +258,11 @@ async def test_reconfigure_cannot_take_a_station_of_another_entry(
     values = [option["value"] for option in options]
     assert PRAGUE_KARLOV not in values
     assert PRAGUE_RUZYNE in values
+
+    # Submitting it anyway - bypassing the picker - is refused as well.
+    with pytest.raises(InvalidData):
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_STATION: PRAGUE_KARLOV}
+        )
+    assert first.unique_id == PRAGUE_RUZYNE
+    assert first.data[CONF_STATION] == PRAGUE_RUZYNE
