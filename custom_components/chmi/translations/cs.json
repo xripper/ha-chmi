@@ -1,0 +1,161 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Tato stanice už je nastavená.",
+      "cannot_connect": "Seznam stanic se nepodařilo stáhnout z opendata.chmi.cz.",
+      "no_stations_left": "Všechny stanice publikované ČHMÚ už jsou nastavené.",
+      "reconfigure_successful": "Stanice byla změněna."
+    },
+    "step": {
+      "user": {
+        "title": "Stanice ČHMÚ",
+        "description": "Vyberte měřicí stanici. Stanice jsou řazené podle vzdálenosti od polohy Home Assistantu.",
+        "data": {
+          "station": "Stanice"
+        }
+      },
+      "reconfigure": {
+        "title": "Změna stanice ČHMÚ",
+        "description": "Vyberte stanici, kterou má tato položka sledovat. Entity si zachovají historii.",
+        "data": {
+          "station": "Stanice"
+        }
+      }
+    }
+  },
+  "options": {
+    "abort": {
+      "cannot_connect": "Seznam stanic se nepodařilo stáhnout z opendata.chmi.cz."
+    },
+    "step": {
+      "init": {
+        "title": "Nastavení ČHMÚ",
+        "description": "Radar, výstrahy a textová předpověď platí pro celou republiku; nechte je zapnuté jen u jedné stanice.",
+        "data": {
+          "radar": "Meteoradar",
+          "radar_variant": "Radarový produkt",
+          "alerts": "Výstrahy",
+          "text_forecast": "Textová předpověď pro kraj"
+        }
+      }
+    }
+  },
+  "selector": {
+    "radar_variant": {
+      "options": {
+        "png": "Maximální odrazivost",
+        "png_masked": "Srážky dopadající k zemi"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alert": {
+        "name": "Výstraha"
+      }
+    },
+    "camera": {
+      "radar": {
+        "name": "Meteoradar"
+      }
+    },
+    "sensor": {
+      "alert_count": {
+        "name": "Aktivní výstrahy"
+      },
+      "cloud_coverage": {
+        "name": "Oblačnost"
+      },
+      "dew_point": {
+        "name": "Rosný bod"
+      },
+      "diffuse_radiation": {
+        "name": "Rozptýlené záření"
+      },
+      "global_radiation": {
+        "name": "Globální záření"
+      },
+      "humidity": {
+        "name": "Relativní vlhkost"
+      },
+      "precipitation_10m": {
+        "name": "Srážky 10 min"
+      },
+      "precipitation_1h": {
+        "name": "Srážky 1 h"
+      },
+      "present_weather": {
+        "name": "Kód stavu počasí"
+      },
+      "pressure": {
+        "name": "Tlak na stanici"
+      },
+      "pressure_sea_level": {
+        "name": "Tlak na hladině moře"
+      },
+      "radar_rain_rate": {
+        "name": "Intenzita srážek z radaru"
+      },
+      "snow_depth": {
+        "name": "Výška sněhu"
+      },
+      "soil_temperature_10": {
+        "name": "Teplota půdy 10 cm"
+      },
+      "soil_temperature_100": {
+        "name": "Teplota půdy 100 cm"
+      },
+      "soil_temperature_20": {
+        "name": "Teplota půdy 20 cm"
+      },
+      "soil_temperature_5": {
+        "name": "Teplota půdy 5 cm"
+      },
+      "soil_temperature_50": {
+        "name": "Teplota půdy 50 cm"
+      },
+      "sunshine_10m": {
+        "name": "Sluneční svit 10 min"
+      },
+      "sunshine_1h": {
+        "name": "Sluneční svit 1 h"
+      },
+      "temperature": {
+        "name": "Teplota"
+      },
+      "temperature_ground": {
+        "name": "Přízemní teplota 5 cm"
+      },
+      "temperature_max": {
+        "name": "Teplota maximální"
+      },
+      "temperature_min": {
+        "name": "Teplota minimální"
+      },
+      "text_forecast": {
+        "name": "Textová předpověď"
+      },
+      "vapour_pressure": {
+        "name": "Tlak vodní páry"
+      },
+      "visibility": {
+        "name": "Dohlednost"
+      },
+      "wind_bearing": {
+        "name": "Směr větru"
+      },
+      "wind_gust": {
+        "name": "Nárazy větru"
+      },
+      "wind_gust_bearing": {
+        "name": "Směr nárazů větru"
+      },
+      "wind_speed": {
+        "name": "Rychlost větru"
+      },
+      "wind_speed_average": {
+        "name": "Průměrná rychlost větru"
+      }
+    }
+  }
+}

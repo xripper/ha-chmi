@@ -1,0 +1,82 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "alert": {
+        "default": "mdi:weather-cloudy-alert",
+        "state": {
+          "off": "mdi:shield-check"
+        }
+      }
+    },
+    "camera": {
+      "radar": {
+        "default": "mdi:radar"
+      }
+    },
+    "sensor": {
+      "alert_count": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "cloud_coverage": {
+        "default": "mdi:weather-cloudy"
+      },
+      "diffuse_radiation": {
+        "default": "mdi:weather-partly-cloudy"
+      },
+      "global_radiation": {
+        "default": "mdi:solar-power-variant"
+      },
+      "present_weather": {
+        "default": "mdi:weather-partly-rainy"
+      },
+      "radar_rain_rate": {
+        "default": "mdi:weather-pouring"
+      },
+      "snow_depth": {
+        "default": "mdi:snowflake"
+      },
+      "soil_temperature_10": {
+        "default": "mdi:thermometer-water"
+      },
+      "soil_temperature_100": {
+        "default": "mdi:thermometer-water"
+      },
+      "soil_temperature_20": {
+        "default": "mdi:thermometer-water"
+      },
+      "soil_temperature_5": {
+        "default": "mdi:thermometer-water"
+      },
+      "soil_temperature_50": {
+        "default": "mdi:thermometer-water"
+      },
+      "sunshine_10m": {
+        "default": "mdi:weather-sunny"
+      },
+      "sunshine_1h": {
+        "default": "mdi:weather-sunny"
+      },
+      "temperature_ground": {
+        "default": "mdi:thermometer-low"
+      },
+      "text_forecast": {
+        "default": "mdi:text-box-outline"
+      },
+      "vapour_pressure": {
+        "default": "mdi:water-percent"
+      },
+      "visibility": {
+        "default": "mdi:eye"
+      },
+      "wind_bearing": {
+        "default": "mdi:compass-outline"
+      },
+      "wind_gust_bearing": {
+        "default": "mdi:compass-outline"
+      },
+      "wind_speed_average": {
+        "default": "mdi:weather-windy"
+      }
+    }
+  }
+}

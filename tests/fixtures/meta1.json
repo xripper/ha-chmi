@@ -1,0 +1,42 @@
+{
+ "zaznamID": "93f9760a-53bc-81cc-595e-5b687f9bc0a0",
+ "datovyZdrojID": "meteorologie",
+ "datovyTokID": "Open.Data.Metadata",
+ "datumVytvoreni": "2026-09-09T00:01:00.617Z",
+ "verzeDat": "1.0",
+ "data": {
+  "type": "DataCollection",
+  "data": {
+   "header": "WSI,GH_ID,FULL_NAME,GEOGR1,GEOGR2,ELEVATION,BEGIN_DATE",
+   "values": [
+    [
+     "0-20000-0-11464",
+     "U1MILE01",
+     "Milešovka",
+     13.93083,
+     50.555,
+     830.5,
+     "1905-01-01T00:00:00Z"
+    ],
+    [
+     "0-20000-0-11518",
+     "P1PRUZ01",
+     "Praha, Ruzyně",
+     14.255556,
+     50.100278,
+     364.0,
+     "1938-01-01T00:00:00Z"
+    ],
+    [
+     "0-20000-0-11519",
+     "P1PKAR01",
+     "Praha, Karlov",
+     14.427778,
+     50.069167,
+     260.5,
+     "1920-01-01T00:00:00Z"
+    ]
+   ]
+  }
+ }
+}

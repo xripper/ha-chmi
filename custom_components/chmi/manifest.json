@@ -1,0 +1,16 @@
+{
+  "domain": "chmi",
+  "name": "ČHMÚ",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/jakubgottwald/ha-chmi",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/jakubgottwald/ha-chmi/issues",
+  "requirements": [
+    "Pillow>=10.0.0",
+    "astral>=2.2",
+    "defusedxml>=0.7.1"
+  ],
+  "version": "0.1.0"
+}

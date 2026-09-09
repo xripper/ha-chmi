@@ -1,0 +1,161 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "This station is already configured.",
+      "cannot_connect": "The station list could not be downloaded from opendata.chmi.cz.",
+      "no_stations_left": "Every station published by ČHMÚ is already configured.",
+      "reconfigure_successful": "The station was changed."
+    },
+    "step": {
+      "user": {
+        "title": "ČHMÚ station",
+        "description": "Pick the measuring station. Stations are ordered by distance from your Home Assistant location.",
+        "data": {
+          "station": "Station"
+        }
+      },
+      "reconfigure": {
+        "title": "Change the ČHMÚ station",
+        "description": "Pick the station this entry should follow. The entities keep their history.",
+        "data": {
+          "station": "Station"
+        }
+      }
+    }
+  },
+  "options": {
+    "abort": {
+      "cannot_connect": "The station list could not be downloaded from opendata.chmi.cz."
+    },
+    "step": {
+      "init": {
+        "title": "ČHMÚ settings",
+        "description": "Radar, warnings and the text forecast cover the whole country; keep them enabled for one station only.",
+        "data": {
+          "radar": "Weather radar",
+          "radar_variant": "Radar product",
+          "alerts": "Warnings",
+          "text_forecast": "Regional text forecast"
+        }
+      }
+    }
+  },
+  "selector": {
+    "radar_variant": {
+      "options": {
+        "png": "Maximum reflectivity",
+        "png_masked": "Precipitation reaching the ground"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alert": {
+        "name": "Warning"
+      }
+    },
+    "camera": {
+      "radar": {
+        "name": "Weather radar"
+      }
+    },
+    "sensor": {
+      "alert_count": {
+        "name": "Active warnings"
+      },
+      "cloud_coverage": {
+        "name": "Cloud coverage"
+      },
+      "dew_point": {
+        "name": "Dew point"
+      },
+      "diffuse_radiation": {
+        "name": "Diffuse radiation"
+      },
+      "global_radiation": {
+        "name": "Global radiation"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "precipitation_10m": {
+        "name": "Precipitation 10 min"
+      },
+      "precipitation_1h": {
+        "name": "Precipitation 1 h"
+      },
+      "present_weather": {
+        "name": "Present weather code"
+      },
+      "pressure": {
+        "name": "Pressure at station"
+      },
+      "pressure_sea_level": {
+        "name": "Pressure at sea level"
+      },
+      "radar_rain_rate": {
+        "name": "Radar rain rate"
+      },
+      "snow_depth": {
+        "name": "Snow depth"
+      },
+      "soil_temperature_10": {
+        "name": "Soil temperature 10 cm"
+      },
+      "soil_temperature_100": {
+        "name": "Soil temperature 100 cm"
+      },
+      "soil_temperature_20": {
+        "name": "Soil temperature 20 cm"
+      },
+      "soil_temperature_5": {
+        "name": "Soil temperature 5 cm"
+      },
+      "soil_temperature_50": {
+        "name": "Soil temperature 50 cm"
+      },
+      "sunshine_10m": {
+        "name": "Sunshine duration 10 min"
+      },
+      "sunshine_1h": {
+        "name": "Sunshine duration 1 h"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "temperature_ground": {
+        "name": "Temperature at 5 cm"
+      },
+      "temperature_max": {
+        "name": "Temperature maximum"
+      },
+      "temperature_min": {
+        "name": "Temperature minimum"
+      },
+      "text_forecast": {
+        "name": "Text forecast"
+      },
+      "vapour_pressure": {
+        "name": "Vapour pressure"
+      },
+      "visibility": {
+        "name": "Visibility"
+      },
+      "wind_bearing": {
+        "name": "Wind bearing"
+      },
+      "wind_gust": {
+        "name": "Wind gust"
+      },
+      "wind_gust_bearing": {
+        "name": "Wind gust bearing"
+      },
+      "wind_speed": {
+        "name": "Wind speed"
+      },
+      "wind_speed_average": {
+        "name": "Wind speed average"
+      }
+    }
+  }
+}
