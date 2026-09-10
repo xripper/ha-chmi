@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 import pytest
@@ -140,6 +141,70 @@ async def test_station_sensors(hass: HomeAssistant, setup_entry: Callable) -> No
     assert f"{entry.entry_id}_soil_temperature_5" not in unique_ids
     assert f"{entry.entry_id}_visibility" in unique_ids  # hourly element
     assert f"{entry.entry_id}_present_weather" in unique_ids
+
+
+async def test_precipitation_today_spans_both_utc_days(
+    hass: HomeAssistant,
+    custom_integration: None,
+    aioclient_mock: AiohttpClientMocker,
+    freezer,
+) -> None:
+    """In Czech local time the day starts in the previous UTC file."""
+    await hass.config.async_set_time_zone("Europe/Prague")
+    freezer.move_to(NOW)  # 2026-09-09 13:52 local, so the day started at 22:00Z
+    hass.config.latitude = 50.0693
+    hass.config.longitude = 14.4278
+    _register(aioclient_mock)
+
+    def envelope(*rows):
+        return json.dumps(
+            {
+                "data": {
+                    "data": {
+                        "header": "STATION,ELEMENT,DT,VAL,FLAG,QUALITY",
+                        "values": list(rows),
+                    }
+                }
+            }
+        )
+
+    aioclient_mock.get(
+        f"{OPENDATA}/meteorology/climate/now/data/10m-{STATION}-20260908.json",
+        text=envelope(
+            [STATION, "SRA10M", "2026-09-08T22:00:00Z", 9.9, "", 5.0],  # previous day
+            [STATION, "SRA10M", "2026-09-08T23:00:00Z", 1.5, "", 5.0],
+        ),
+    )
+    aioclient_mock.get(
+        f"{OPENDATA}/meteorology/climate/now/data/1h-{STATION}-20260908.json",
+        status=404,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=STATION_NAME,
+        unique_id=STATION,
+        data={
+            CONF_STATION: STATION,
+            CONF_STATION_NAME: STATION_NAME,
+            CONF_RADAR: False,
+            CONF_RADAR_VARIANT: RADAR_VARIANT_MASKED,
+            CONF_ALERTS: False,
+            CONF_TEXT_FORECAST: False,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    state = hass.states.get(_entity_id(hass, entry, "precipitation_today"))
+    assert state is not None
+    assert state.attributes["window_start"] == "2026-09-08T22:00:00+00:00"
+    assert state.attributes["element"] == "SRA10M"
+    # 9.9 mm is stamped exactly at the window start and belongs to the day
+    # before; 1.5 mm from the previous UTC day still counts.
+    assert float(state.state) >= 1.5
+    assert float(state.state) < 9.9
 
 
 async def test_units_are_converted(hass: HomeAssistant, setup_entry: Callable) -> None:

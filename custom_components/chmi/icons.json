@@ -76,6 +76,9 @@
       },
       "wind_speed_average": {
         "default": "mdi:weather-windy"
+      },
+      "precipitation_today": {
+        "default": "mdi:weather-rainy"
       }
     }
   }

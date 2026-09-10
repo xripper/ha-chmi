@@ -15,6 +15,7 @@ English version: [README.md](README.md)
 | Entita | Popis |
 | --- | --- |
 | `weather.<stanice>` | Aktuální stav měřený na stanici. Bez předpovědi – viz [Proč není předpověď](#proč-není-předpověď). |
+| `sensor.<stanice>_srazky_dnes` | Úhrn srážek od lokální půlnoci, sečtený z vlastních vzorků stanice. |
 | `sensor.<stanice>_*` | Senzor pro každý prvek, který stanice publikuje: teplota (i přízemní 5 cm a půdní 5–100 cm), vlhkost, tlak, rosný bod, rychlost a směr větru, nárazy, srážky, výška sněhu, sluneční svit, globální a rozptýlené záření, oblačnost, dohlednost, kód stavu počasí. |
 | `camera.<stanice>_meteoradar` | Nejnovější radarový snímek (krok 5 minut) ocropovaný na georeferencovanou datovou oblast a složený nad hranicemi krajů. |
 | `sensor.<stanice>_intenzita_srazek_z_radaru` | Intenzita srážek v mm/h odečtená z radarového pixelu nad polohou Home Assistantu. |
@@ -97,6 +98,19 @@ pixely se použijí jen tehdy, když je pixel překryt vykreslenou hranicí).
 Intenzita srážek vychází z Z = 200 R^1,6; škála má krok 4 dBZ, takže odečet
 může odrazivost podhodnotit o jednu třídu.
 
+### Denní úhrn srážek
+
+ČHMÚ publikuje oficiální denní úhrny jen za klimatologický den 07–07 lokálního
+času a vydává je jednou měsíčně v `climate/recent/data/daily/`. Senzor
+`sensor.<stanice>_srazky_dnes` proto sčítá vlastní desetiminutové úhrny stanice
+(hodinové tam, kde stanice desetiminutovou řadu nemá) za probíhající
+**kalendářní den v lokálním čase**, takže se s číslem, které ČHMÚ později vydá
+jako denní úhrn, shodovat nebude. Vzorek nese úhrn intervalu končícího jeho
+časovou značkou, takže ten stamplý přesně o půlnoci patří předchozímu dni a
+nezapočítá se. V českém čase den začíná ve 22:00 UTC, proto se čtou oba denní
+soubory — jsou to tytéž soubory jako pro ostatní senzory a dotazy jsou
+podmíněné.
+
 ### Jak se odvozuje stav počasí
 
 Staniční soubory obsahují měření, ne stav počasí, proto entita použije nejlepší
@@ -128,7 +142,7 @@ předpověď psanou meteorology ČHMÚ.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 139 testů, fixtures jsou reálné odpovědi ČHMÚ
+pytest          # 144 testů, fixtures jsou reálné odpovědi ČHMÚ
 ruff check .
 ```
 

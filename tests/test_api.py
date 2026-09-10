@@ -25,6 +25,29 @@ from tests.conftest import load_bytes, load_json, load_text
 
 STATION = "0-20000-0-11518"
 TODAY = date(2026, 9, 9)
+# The fixtures were captured on 2026-09-09; the newest sample they carry.
+NEWEST_SAMPLE = datetime(2026, 9, 9, 12, 0, tzinfo=UTC)
+LOCAL_MIDNIGHT = datetime(2026, 9, 8, 22, 0, tzinfo=UTC)  # 2026-09-09 00:00 CEST
+
+
+def _document(*rows: list) -> dict:
+    """Wrap rows in the ČHMÚ DataCollection envelope."""
+    return {
+        "data": {
+            "data": {
+                "header": "STATION,ELEMENT,DT,VAL,FLAG,QUALITY",
+                "values": list(rows),
+            }
+        }
+    }
+
+
+def _frozen(moment: datetime = NEWEST_SAMPLE):
+    """Pretend it is ``moment``, so the fixture samples count as current."""
+    return patch(
+        "custom_components.chmi.api.observations.dt_util.utcnow",
+        return_value=moment,
+    )
 
 
 class FakeClient:
@@ -131,7 +154,10 @@ async def test_stations_sorted_by_distance() -> None:
 async def test_observations_take_the_newest_sample() -> None:
     """Each element keeps its newest published value."""
     client = FakeClient({"10m-": load_json("station_10m.json")})
-    observations = await async_load_observations(client, STATION, DATASET_10M, TODAY)
+    with _frozen():
+        observations = await async_load_observations(
+            client, STATION, DATASET_10M, TODAY
+        )
 
     assert "T" in observations
     temperature = observations["T"]
@@ -154,7 +180,10 @@ async def test_observations_skip_rejected_quality() -> None:
             row[3] = -99.0
 
     client = FakeClient({"10m-": document})
-    observations = await async_load_observations(client, STATION, DATASET_10M, TODAY)
+    with _frozen():
+        observations = await async_load_observations(
+            client, STATION, DATASET_10M, TODAY
+        )
     assert observations["T"].value != -99.0
     assert observations["T"].measured_at.isoformat().replace("+00:00", "Z") < newest
 
@@ -167,7 +196,11 @@ async def test_station_data_merges_both_datasets() -> None:
             "1h-": load_json("station_1h.json"),
         }
     )
-    observations = await async_load_station_data(client, STATION, TODAY)
+    with _frozen():
+        readings = await async_load_station_data(
+            client, STATION, TODAY, precipitation_since=LOCAL_MIDNIGHT
+        )
+    observations = readings.observations
     assert {"T", "H", "SRA10M"} <= set(observations)  # from the 10 minute file
     assert {"ww", "N", "VV", "Td"} <= set(observations)  # from the hourly file
 
@@ -175,7 +208,96 @@ async def test_station_data_merges_both_datasets() -> None:
 async def test_station_data_without_any_file() -> None:
     """A station without published data raises."""
     with pytest.raises(ChmiApiError, match="No current observations published"):
-        await async_load_station_data(FakeClient({}), STATION, TODAY)
+        await async_load_station_data(
+            FakeClient({}), STATION, TODAY, precipitation_since=LOCAL_MIDNIGHT
+        )
+
+
+async def test_precipitation_since_local_midnight() -> None:
+    """The daily total adds up the ten minute amounts of the window."""
+    yesterday = _document(
+        [STATION, "SRA10M", "2026-09-08T22:00:00Z", 5.0, "", 5.0],  # at the start
+        [STATION, "SRA10M", "2026-09-08T22:10:00Z", 0.4, "", 5.0],
+    )
+    today = _document(
+        [STATION, "SRA10M", "2026-09-09T06:00:00Z", 1.1, "", 5.0],
+        [STATION, "SRA10M", "2026-09-09T11:50:00Z", 0.0, "", 5.0],
+        [STATION, "T", "2026-09-09T11:50:00Z", 18.0, "", 5.0],
+    )
+    client = FakeClient(
+        {f"10m-{STATION}-20260908": yesterday,
+         f"10m-{STATION}-20260909": today}
+    )
+
+    with _frozen():
+        readings = await async_load_station_data(
+            client, STATION, TODAY, precipitation_since=LOCAL_MIDNIGHT
+        )
+
+    total = readings.precipitation
+    assert total is not None
+    # The sample stamped exactly at the window start belongs to the day before.
+    assert total.total == 1.5
+    assert total.element == "SRA10M"
+    assert total.samples == 3
+    assert total.window_start == LOCAL_MIDNIGHT
+
+
+async def test_precipitation_reads_both_utc_days() -> None:
+    """The window starts in the previous UTC day, so both files are read."""
+    client = FakeClient(
+        {
+            f"10m-{STATION}-20260908": _document(
+                [STATION, "SRA10M", "2026-09-08T22:30:00Z", 2.0, "", 5.0]
+            ),
+            f"10m-{STATION}-20260909": _document(
+                [STATION, "SRA10M", "2026-09-09T11:50:00Z", 3.0, "", 5.0]
+            ),
+        }
+    )
+
+    with _frozen():
+        readings = await async_load_station_data(
+            client, STATION, TODAY, precipitation_since=LOCAL_MIDNIGHT
+        )
+
+    assert readings.precipitation.total == 5.0
+    assert readings.precipitation.samples == 2
+
+
+async def test_precipitation_falls_back_to_the_hourly_series() -> None:
+    """A station without a ten minute series is summed from the hourly one."""
+    hourly = _document(
+        [STATION, "SRA1H", "2026-09-09T11:00:00Z", 1.2, "", 5.0],
+        [STATION, "SRA1H", "2026-09-09T12:00:00Z", 0.8, "", 5.0],
+    )
+    client = FakeClient({f"1h-{STATION}-20260909": hourly})
+
+    with _frozen():
+        readings = await async_load_station_data(
+            client, STATION, TODAY, precipitation_since=LOCAL_MIDNIGHT
+        )
+
+    assert readings.precipitation.element == "SRA1H"
+    assert readings.precipitation.total == 2.0
+
+
+async def test_precipitation_absent_for_stations_without_a_gauge() -> None:
+    """A station measuring no precipitation reports no total."""
+    client = FakeClient(
+        {
+            f"10m-{STATION}-20260909": _document(
+                [STATION, "T", "2026-09-09T11:50:00Z", 18.0, "", 5.0]
+            )
+        }
+    )
+
+    with _frozen():
+        readings = await async_load_station_data(
+            client, STATION, TODAY, precipitation_since=LOCAL_MIDNIGHT
+        )
+
+    assert readings.precipitation is None
 
 
 async def test_empty_values_are_ignored_not_fatal() -> None:
@@ -219,8 +341,10 @@ async def test_hourly_value_is_not_replaced_by_an_older_ten_minute_value() -> No
         "custom_components.chmi.api.observations.dt_util.utcnow",
         return_value=datetime.fromisoformat(newest.replace("Z", "+00:00")),
     ):
-        observations = await async_load_station_data(client, STATION, TODAY)
-    assert observations["T"].value == 21.5
+        readings = await async_load_station_data(
+            client, STATION, TODAY, precipitation_since=LOCAL_MIDNIGHT
+        )
+    assert readings.observations["T"].value == 21.5
 
 
 async def test_values_older_than_the_maximum_age_are_dropped() -> None:

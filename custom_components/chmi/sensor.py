@@ -29,7 +29,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import ChmiConfigEntry
 from .api.alerts import filter_alerts
-from .const import QUALITY_LABELS
+from .const import PRECIPITATION_ELEMENTS, QUALITY_LABELS
 from .coordinator import (
     ChmiAlertsCoordinator,
     ChmiRadarCoordinator,
@@ -338,6 +338,9 @@ async def async_setup_entry(
     if "ww" in available:
         entities.append(ChmiPresentWeatherSensor(station, entry_id))
 
+    if any(element in available for element in PRECIPITATION_ELEMENTS):
+        entities.append(ChmiPrecipitationTodaySensor(station, entry_id))
+
     if runtime.radar is not None:
         entities.append(ChmiRadarRainSensor(runtime.radar, entry_id, station))
     if runtime.alerts is not None:
@@ -441,6 +444,55 @@ class ChmiPresentWeatherSensor(ChmiStationEntity, SensorEntity):
         return {
             "condition": present_weather_condition(observation.value),
             "measured_at": observation.measured_at.isoformat(),
+        }
+
+
+class ChmiPrecipitationTodaySensor(ChmiStationEntity, SensorEntity):
+    """Precipitation accumulated since the local midnight.
+
+    ČHMÚ publishes official daily totals only for the climatological day, which
+    runs from 07:00 to 07:00 local time, and it publishes them once a month.
+    This sensor therefore adds up the station's own ten minute (or, where the
+    station has none, hourly) amounts of the running calendar day.
+    """
+
+    _attr_translation_key = "precipitation_today"
+    _attr_device_class = SensorDeviceClass.PRECIPITATION
+    _attr_native_unit_of_measurement = UnitOfPrecipitationDepth.MILLIMETERS
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: ChmiStationCoordinator, entry_id: str) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, entry_id)
+        self._attr_unique_id = f"{entry_id}_precipitation_today"
+
+    @property
+    def available(self) -> bool:
+        """Whether a total could be computed."""
+        return (
+            super().available
+            and self.coordinator.data.precipitation_today is not None
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the accumulated amount in millimetres."""
+        total = self.coordinator.data.precipitation_today
+        return total.total if total else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the window the total covers."""
+        total = self.coordinator.data.precipitation_today
+        if total is None:
+            return {}
+        return {
+            "element": total.element,
+            "window_start": total.window_start.isoformat(),
+            "measured_to": total.measured_to.isoformat(),
+            "samples": total.samples,
+            "station": self.coordinator.data.station.name,
         }
 
 

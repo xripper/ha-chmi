@@ -13,7 +13,11 @@ from homeassistant.util import dt as dt_util
 
 from .api.alerts import Alert, parse_alerts
 from .api.client import ChmiApiError, ChmiClient
-from .api.observations import Observation, async_load_station_data
+from .api.observations import (
+    Observation,
+    PrecipitationTotal,
+    async_load_station_data,
+)
 from .api.radar import RadarFrame, async_load_latest_frame, frame_age
 from .api.stations import Station, StationCatalog, async_load_catalog
 from .api.text_forecast import TextForecast, async_load_text_forecasts
@@ -44,6 +48,7 @@ class StationData:
     station: Station
     elements: frozenset[str]
     observations: dict[str, Observation]
+    precipitation_today: PrecipitationTotal | None = None
 
     def value(self, element: str) -> float | None:
         """Return the newest value of an element."""
@@ -114,15 +119,19 @@ class ChmiStationCoordinator(DataUpdateCoordinator[StationData]):
             station = catalog.stations.get(self.wsi)
             if station is None:
                 raise UpdateFailed(f"Station {self.wsi} is no longer published")
-            observations = await async_load_station_data(
-                self._client, self.wsi, dt_util.utcnow().date()
+            readings = await async_load_station_data(
+                self._client,
+                self.wsi,
+                dt_util.utcnow().date(),
+                precipitation_since=dt_util.as_utc(dt_util.start_of_local_day()),
             )
         except ChmiApiError as err:
             raise UpdateFailed(str(err)) from err
         return StationData(
             station=station,
             elements=catalog.elements_for(self.wsi),
-            observations=observations,
+            observations=readings.observations,
+            precipitation_today=readings.precipitation,
         )
 
 

@@ -63,6 +63,10 @@ ALERTS_URL: Final = "https://vystrahy-cr.chmi.cz/data/XOCZ50_OKPR.xml"
 DATASET_10M: Final = "10m"
 DATASET_1H: Final = "1h"
 
+# Elements carrying a precipitation amount, most detailed first.  Only one of
+# them is ever summed, because they describe the same rain.
+PRECIPITATION_ELEMENTS: Final = ("SRA10M", "SRA1H")
+
 # ---------------------------------------------------------------------------
 # Radar geometry
 #

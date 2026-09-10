@@ -16,6 +16,7 @@ Czech version of this document: [README.cs.md](README.cs.md)
 | Entity | Description |
 | --- | --- |
 | `weather.<station>` | Current conditions measured at the station. No forecast - see [Why there is no forecast](#why-there-is-no-forecast). |
+| `sensor.<station>_precipitation_today` | Precipitation accumulated since the local midnight, added up from the station's own samples. |
 | `sensor.<station>_*` | One sensor per measured element the station publishes: temperature (also 5 cm above ground, soil at 5-100 cm), humidity, pressure, dew point, wind speed, gusts and bearing, precipitation, snow depth, sunshine duration, global and diffuse radiation, cloud cover, visibility, present weather code. |
 | `camera.<station>_weather_radar` | The newest radar composite (5 minute steps) cropped to its georeferenced data area and drawn over the borders of the Czech regions. |
 | `sensor.<station>_radar_rain_rate` | Rain rate in mm/h read from the radar pixel above your Home Assistant location. |
@@ -101,6 +102,19 @@ the location by matching its colour against the official dBZ colour scale
 map outline). The rain rate follows from Z = 200 R^1.6, and because the scale
 has 4 dBZ classes a reading can understate the reflectivity by up to one class.
 
+### The daily precipitation total
+
+ČHMÚ publishes official daily totals only for the climatological day, which runs
+from 07:00 to 07:00 local time, and it publishes them once a month in
+`climate/recent/data/daily/`. `sensor.<station>_precipitation_today` therefore
+adds up the station's own ten minute amounts (hourly ones where the station has
+no ten minute series) of the running **calendar day in your local time**, so it
+will not match the number ČHMÚ later publishes as that day's total. A sample
+carries the amount of the interval ending at its timestamp, so the one stamped
+exactly at midnight belongs to the previous day and is left out. In Czech local
+time the day starts at 22:00 UTC, so both daily files are read; they are the
+same files the other sensors use, and the requests are conditional.
+
 ### How the weather condition is derived
 
 Station files contain measurements, not a condition, so the entity uses the best
@@ -132,7 +146,7 @@ forecast written by ČHMÚ forecasters is provided instead.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 139 tests, fixtures are real ČHMÚ responses
+pytest          # 144 tests, fixtures are real ČHMÚ responses
 ruff check .
 ```
 

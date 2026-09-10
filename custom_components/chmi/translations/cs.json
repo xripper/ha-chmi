@@ -155,6 +155,9 @@
       },
       "wind_speed_average": {
         "name": "Průměrná rychlost větru"
+      },
+      "precipitation_today": {
+        "name": "Srážky dnes"
       }
     }
   }
