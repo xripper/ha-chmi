@@ -30,8 +30,7 @@ time to find out.
 HACS installs from the newest **GitHub release**, so a fix that is only on
 `main` does not reach users: bump `version` in `manifest.json`, commit, tag
 `vX.Y.Z`, push the tag, then `gh release create`. `gh` is installed and
-authenticated as `xripper`; the npm global prefix is `~/.local` (the old
-root-owned 4.15.1 OMC install still sits in `/usr/local`).
+authenticated as `xripper`.
 
 Brand images live in `custom_components/chmi/brand/` (HA 2026.3+ serves them
 from `/api/brands/integration/chmi/`; the brands repo no longer accepts PRs for
