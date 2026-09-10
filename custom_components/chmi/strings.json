@@ -35,7 +35,8 @@
           "radar": "Weather radar",
           "radar_variant": "Radar product",
           "alerts": "Warnings",
-          "text_forecast": "Regional text forecast"
+          "text_forecast": "Regional text forecast",
+          "merge_precipitation": "Precipitation at home (radar and gauges)"
         }
       }
     }
@@ -158,6 +159,15 @@
       },
       "precipitation_today": {
         "name": "Precipitation today"
+      },
+      "precipitation_home_today": {
+        "name": "Precipitation at home today"
+      },
+      "precipitation_home_1h": {
+        "name": "Precipitation at home 1 h"
+      },
+      "precipitation_home_24h": {
+        "name": "Precipitation at home 24 h"
       }
     }
   }

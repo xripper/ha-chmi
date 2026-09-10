@@ -13,6 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api.client import ChmiClient
 from .const import (
     CONF_ALERTS,
+    CONF_MERGE,
     CONF_RADAR,
     CONF_RADAR_VARIANT,
     CONF_STATION,
@@ -23,6 +24,7 @@ from .const import (
 from .coordinator import (
     ChmiAlertsCoordinator,
     ChmiCatalog,
+    ChmiMergeCoordinator,
     ChmiRadarCoordinator,
     ChmiStationCoordinator,
     ChmiTextForecastCoordinator,
@@ -45,6 +47,7 @@ class ChmiRuntimeData:
 
     station: ChmiStationCoordinator
     radar: ChmiRadarCoordinator | None = None
+    merge: ChmiMergeCoordinator | None = None
     alerts: ChmiAlertsCoordinator | None = None
     text_forecast: ChmiTextForecastCoordinator | None = None
     region: str | None = None
@@ -111,6 +114,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ChmiConfigEntry) -> bool
         )
         await radar.async_config_entry_first_refresh()
         runtime.radar = radar
+
+    if options.get(CONF_MERGE, True):
+        merge = ChmiMergeCoordinator(
+            hass,
+            entry,
+            shared.client,
+            (hass.config.latitude, hass.config.longitude),
+        )
+        await merge.async_config_entry_first_refresh()
+        runtime.merge = merge
 
     if options.get(CONF_ALERTS, True):
         alerts = ChmiAlertsCoordinator(hass, entry, shared.client)

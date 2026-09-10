@@ -16,6 +16,7 @@ English version: [README.md](README.md)
 | --- | --- |
 | `weather.<stanice>` | Aktuální stav měřený na stanici. Bez předpovědi – viz [Proč není předpověď](#proč-není-předpověď). |
 | `sensor.<stanice>_srazky_dnes` | Úhrn srážek od lokální půlnoci, sečtený z vlastních vzorků stanice. |
+| `sensor.<stanice>_srazky_doma_dnes` | Úhrn srážek v poloze Home Assistantu od lokální půlnoci, ze spojeného produktu radar + srážkoměry. Dále jako klouzavý senzor `_za_hodinu` a `_24_h`. |
 | `sensor.<stanice>_*` | Senzor pro každý prvek, který stanice publikuje: teplota (i přízemní 5 cm a půdní 5–100 cm), vlhkost, tlak, rosný bod, rychlost a směr větru, nárazy, srážky, výška sněhu, sluneční svit, globální a rozptýlené záření, oblačnost, dohlednost, kód stavu počasí. |
 | `camera.<stanice>_meteoradar` | Nejnovější radarový snímek (krok 5 minut) ocropovaný na georeferencovanou datovou oblast a složený nad hranicemi krajů. |
 | `sensor.<stanice>_intenzita_srazek_z_radaru` | Intenzita srážek v mm/h odečtená z radarového pixelu nad polohou Home Assistantu. |
@@ -49,7 +50,8 @@ v seznamu nejsou. Radar, výstrahy a textová předpověď platí pro celou
 republiku, proto se zapnou jen u první přidané stanice.
 
 - **⋮ → Konfigurovat** přepne radar mezi **maximální odrazivostí** a **srážkami
-  dopadajícími k zemi** a vypne či zapne výstrahy a textovou předpověď.
+  dopadajícími k zemi** a vypne či zapne srážky ve vlastní poloze, výstrahy
+  a textovou předpověď.
 - **⋮ → Překonfigurovat** přesune položku na jinou stanici. Entity si zachovají
   svá id i historii, protože jsou identifikované podle položky konfigurace, ne
   podle stanice.
@@ -80,6 +82,9 @@ potřeba.
 - Radar: `https://opendata.chmi.cz/meteorology/weather/radar/composite/maxz/png/`
   a `.../png_masked/`, název souboru
   `pacz2gmaps3.z_max3d.YYYYMMDD.HHMM.0.png` (UTC)
+- Spojené srážky:
+  `https://opendata.chmi.cz/meteorology/weather/radar/composite/merge1h/hdf5/`,
+  název souboru `T_PASV23_C_OKPR_YYYYMMDDhhmmss.hdf` (UTC, konec okna)
 - Výstrahy: `https://vystrahy-cr.chmi.cz/data/XOCZ50_OKPR.xml` (CAP v1.2).
   Výstraha se ke kraji přiřazuje podle geokódů CISORP jejích oblastí, takže
   fungují i výstrahy na úrovni ORP a výstrahy pro více krajů.
@@ -110,6 +115,29 @@ jako denní úhrn, shodovat nebude. Vzorek nese úhrn intervalu končícího jeh
 nezapočítá se. V českém čase den začíná ve 22:00 UTC, proto se čtou oba denní
 soubory — jsou to tytéž soubory jako pro ostatní senzory a dotazy jsou
 podmíněné.
+
+### Srážky ve vlastní poloze
+
+`merge1h` je produkt ČHMÚ, který spojuje radarové pole srážek s údaji vlastních
+i partnerských srážkoměrů metodou krigingu s externím driftem. Na 267 párech
+stanice×hodina se hodnota v místě srážkoměru shoduje s tím srážkoměrem
+v průměru na 0,006 mm (největší rozdíl 0,70 mm) — mezi stanicemi je to tedy
+radarové pole ohnuté na srážkoměry, což je nejblíž srážkoměru na vlastní
+zahradě, co otevřená data dovolí.
+
+Produkt existuje jen jako **60minutová okna publikovaná každých 10 minut**,
+proto:
+
+- `_za_hodinu` je nejnovější okno, tedy posledních 60 minut,
+- `_dnes` a `_24_h` sčítají celé hodiny, jejichž okna se nepřekrývají, takže
+  denní úhrn má zpoždění až jednu hodinu (atribut `covered_to` říká, kam sahá,
+  `hours_missing` kolik oken ČHMÚ nevydal).
+
+Hodnoty se čtou z HDF5 mřížky, jsou to tedy přesné milimetry produktu, ne
+barevné třídy. Soubor má ~35 kB; po restartu se doplní celý probíhající den
+(až 24 souborů), pak se stahuje jeden soubor za hodinu. Ke čtení slouží
+[`pyfive`](https://pypi.org/project/pyfive/), čistě pythonový HDF5 reader, který
+se na Home Assistant OS nainstaluje bez kompilátoru.
 
 ### Jak se odvozuje stav počasí
 
@@ -142,7 +170,7 @@ předpověď psanou meteorology ČHMÚ.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 144 testů, fixtures jsou reálné odpovědi ČHMÚ
+pytest          # 155 testů, fixtures jsou reálné odpovědi ČHMÚ
 ruff check .
 ```
 

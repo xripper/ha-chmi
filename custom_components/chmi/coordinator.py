@@ -13,6 +13,13 @@ from homeassistant.util import dt as dt_util
 
 from .api.alerts import Alert, parse_alerts
 from .api.client import ChmiApiError, ChmiClient
+from .api.merge import (
+    MergeSample,
+    async_load_frame,
+    async_load_latest,
+    hour_ends_between,
+    sample_frame,
+)
 from .api.observations import (
     Observation,
     PrecipitationTotal,
@@ -25,6 +32,9 @@ from .const import (
     ALERTS_UPDATE_INTERVAL,
     ALERTS_URL,
     DOMAIN,
+    MERGE_MAX_FETCHES_PER_UPDATE,
+    MERGE_ROLLING_WINDOW,
+    MERGE_UPDATE_INTERVAL,
     METADATA_MAX_AGE,
     RADAR_MAX_AGE,
     RADAR_UPDATE_INTERVAL,
@@ -197,6 +207,136 @@ class ChmiRadarCoordinator(DataUpdateCoordinator[RadarState]):
             image=image,
             home_sample=home_sample,
             station_sample=station_sample,
+        )
+
+
+@dataclass(slots=True)
+class MergeState:
+    """Precipitation accumulated at one point from the merged product."""
+
+    latest: MergeSample | None
+    today_total: float | None
+    today_covered_to: datetime | None
+    today_hours: int
+    today_hours_expected: int
+    rolling_total: float | None
+    rolling_hours: int
+
+
+class ChmiMergeCoordinator(DataUpdateCoordinator[MergeState]):
+    """Accumulate the merged 1 hour precipitation estimate at one point.
+
+    The product only exists as 60 minute windows published every 10 minutes,
+    so the hourly frames - whose windows do not overlap - are added up for the
+    running day and for the last 24 hours, while the newest sliding frame gives
+    the hour in progress.  Values already read are kept in memory, so a normal
+    update fetches one new frame per hour.
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        client: ChmiClient,
+        location: tuple[float, float],
+    ) -> None:
+        """Initialise the coordinator for one location."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            config_entry=entry,
+            name=f"{DOMAIN} merged precipitation",
+            update_interval=MERGE_UPDATE_INTERVAL,
+        )
+        self._client = client
+        self._location = location
+        self._hourly: dict[datetime, float] = {}
+        self._unpublished: dict[datetime, int] = {}
+
+    async def _async_update_data(self) -> MergeState:
+        """Fetch the frames that are missing and add the windows up."""
+        now = dt_util.utcnow()
+        midnight = dt_util.as_utc(dt_util.start_of_local_day())
+
+        today_hours = hour_ends_between(midnight, now)
+        rolling_hours = hour_ends_between(now - MERGE_ROLLING_WINDOW, now)
+        wanted = sorted(set(today_hours) | set(rolling_hours))
+        self._prune(wanted[0] if wanted else now)
+
+        try:
+            await self._async_fill(wanted, now)
+            latest = await self._async_latest(now)
+        except ChmiApiError as err:
+            raise UpdateFailed(str(err)) from err
+
+        today = [self._hourly[hour] for hour in today_hours if hour in self._hourly]
+        rolling = [self._hourly[hour] for hour in rolling_hours if hour in self._hourly]
+        covered = [hour for hour in today_hours if hour in self._hourly]
+
+        return MergeState(
+            latest=latest,
+            today_total=round(sum(today), 1) if today else None,
+            today_covered_to=max(covered) if covered else None,
+            today_hours=len(today),
+            today_hours_expected=len(today_hours),
+            rolling_total=round(sum(rolling), 1) if rolling else None,
+            rolling_hours=len(rolling),
+        )
+
+    def _prune(self, oldest_wanted: datetime) -> None:
+        """Forget windows that no sensor covers any more."""
+        for store in (self._hourly, self._unpublished):
+            for hour in [hour for hour in store if hour < oldest_wanted]:
+                del store[hour]
+
+    async def _async_fill(self, wanted: list[datetime], now: datetime) -> None:
+        """Download and sample the windows that are not known yet."""
+        fetches = 0
+        for hour in wanted:
+            if hour in self._hourly:
+                continue
+            # A frame can be published late, but not indefinitely so.
+            if self._unpublished.get(hour, 0) >= 3:
+                continue
+            if fetches >= MERGE_MAX_FETCHES_PER_UPDATE:
+                _LOGGER.debug("Merge backfill continues on the next update")
+                break
+            fetches += 1
+            payload = await async_load_frame(self._client, hour)
+            if payload is None:
+                self._unpublished[hour] = self._unpublished.get(hour, 0) + 1
+                continue
+            point = await self.hass.async_add_executor_job(
+                sample_frame, payload, *self._location
+            )
+            if point.window_end != hour:
+                _LOGGER.warning(
+                    "Merge frame for %s declares the window %s, ignoring it",
+                    hour.isoformat(),
+                    point.window_end.isoformat(),
+                )
+                self._unpublished[hour] = 3
+                continue
+            if point.millimetres is None:
+                # Outside the grid or no value at this point.
+                self._unpublished[hour] = 3
+                continue
+            self._hourly[hour] = point.millimetres
+            self._unpublished.pop(hour, None)
+
+    async def _async_latest(self, now: datetime) -> MergeSample | None:
+        """Sample the newest published sliding window."""
+        newest = await async_load_latest(self._client, now=now)
+        if newest is None:
+            return None
+        window_end, payload = newest
+        point = await self.hass.async_add_executor_job(
+            sample_frame, payload, *self._location
+        )
+        return MergeSample(
+            window_end=point.window_end or window_end,
+            millimetres=point.millimetres,
+            in_coverage=point.millimetres is not None,
         )
 
 

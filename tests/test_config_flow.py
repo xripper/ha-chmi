@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.chmi.const import (
     CONF_ALERTS,
+    CONF_MERGE,
     CONF_RADAR,
     CONF_RADAR_VARIANT,
     CONF_STATION,
@@ -79,6 +80,7 @@ async def test_user_flow_creates_entry(
         CONF_STATION_NAME: "Praha, Ruzyně",
         CONF_RADAR: True,
         CONF_RADAR_VARIANT: "png_masked",
+        CONF_MERGE: True,
         CONF_ALERTS: True,
         CONF_TEXT_FORECAST: True,
     }
@@ -101,6 +103,7 @@ async def test_second_entry_has_no_country_wide_entities(
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_RADAR] is False
+    assert result["data"][CONF_MERGE] is False
     assert result["data"][CONF_ALERTS] is False
     assert result["data"][CONF_TEXT_FORECAST] is False
 
@@ -157,6 +160,7 @@ def _entry(**overrides) -> MockConfigEntry:
         CONF_STATION_NAME: "Praha, Ruzyně",
         CONF_RADAR: True,
         CONF_RADAR_VARIANT: "png_masked",
+        CONF_MERGE: True,
         CONF_ALERTS: True,
         CONF_TEXT_FORECAST: True,
     }
@@ -183,6 +187,7 @@ async def test_options_flow_toggles_country_wide_entities(
         {
             CONF_RADAR: True,
             CONF_RADAR_VARIANT: RADAR_VARIANT_PNG,
+            CONF_MERGE: False,
             CONF_ALERTS: False,
             CONF_TEXT_FORECAST: False,
         },

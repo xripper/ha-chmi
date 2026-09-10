@@ -79,6 +79,15 @@
       },
       "precipitation_today": {
         "default": "mdi:weather-rainy"
+      },
+      "precipitation_home_today": {
+        "default": "mdi:home-flood"
+      },
+      "precipitation_home_1h": {
+        "default": "mdi:weather-pouring"
+      },
+      "precipitation_home_24h": {
+        "default": "mdi:water-outline"
       }
     }
   }

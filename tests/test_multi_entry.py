@@ -11,6 +11,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.chmi.const import (
     CONF_ALERTS,
+    CONF_MERGE,
     CONF_RADAR,
     CONF_RADAR_VARIANT,
     CONF_STATION,
@@ -88,6 +89,7 @@ async def two_stations_fixture(
                 CONF_STATION_NAME: name,
                 CONF_RADAR: country_wide,
                 CONF_RADAR_VARIANT: RADAR_VARIANT_MASKED,
+                CONF_MERGE: False,
                 CONF_ALERTS: country_wide,
                 CONF_TEXT_FORECAST: country_wide,
             },

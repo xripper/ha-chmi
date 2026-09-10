@@ -32,6 +32,7 @@ from .api.alerts import filter_alerts
 from .const import PRECIPITATION_ELEMENTS, QUALITY_LABELS
 from .coordinator import (
     ChmiAlertsCoordinator,
+    ChmiMergeCoordinator,
     ChmiRadarCoordinator,
     ChmiStationCoordinator,
     ChmiTextForecastCoordinator,
@@ -42,6 +43,44 @@ from .wmo import (
     present_weather_condition,
     visibility_meters,
     wind_bearing_label,
+)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ChmiMergeSensorDescription(SensorEntityDescription):
+    """Description of a sensor derived from the merged precipitation product."""
+
+    window: str
+
+
+MERGE_SENSOR_TYPES: tuple[ChmiMergeSensorDescription, ...] = (
+    ChmiMergeSensorDescription(
+        key="precipitation_home_today",
+        window="today",
+        translation_key="precipitation_home_today",
+        device_class=SensorDeviceClass.PRECIPITATION,
+        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        suggested_display_precision=1,
+    ),
+    ChmiMergeSensorDescription(
+        key="precipitation_home_1h",
+        window="hour",
+        translation_key="precipitation_home_1h",
+        device_class=SensorDeviceClass.PRECIPITATION,
+        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    ChmiMergeSensorDescription(
+        key="precipitation_home_24h",
+        window="rolling",
+        translation_key="precipitation_home_24h",
+        device_class=SensorDeviceClass.PRECIPITATION,
+        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
 )
 
 
@@ -343,6 +382,11 @@ async def async_setup_entry(
 
     if runtime.radar is not None:
         entities.append(ChmiRadarRainSensor(runtime.radar, entry_id, station))
+    if runtime.merge is not None:
+        entities.extend(
+            ChmiMergePrecipitationSensor(runtime.merge, entry_id, station, description)
+            for description in MERGE_SENSOR_TYPES
+        )
     if runtime.alerts is not None:
         entities.append(
             ChmiAlertCountSensor(runtime.alerts, entry_id, station, runtime.region)
@@ -540,6 +584,71 @@ class ChmiRadarRainSensor(ChmiEntity, SensorEntity):
             "reflectivity_dbz": state.home_sample.dbz,
             "aloft_only": state.home_sample.aloft_only,
         }
+
+
+class ChmiMergePrecipitationSensor(ChmiEntity, SensorEntity):
+    """Precipitation at the Home Assistant location from the merged product.
+
+    ČHMÚ merges the radar field with its rain gauges, so this is the closest
+    thing to a rain gauge in the garden that open data can give.  The windows
+    are whole hours, so the daily total lags up to one hour behind; the hour in
+    progress is covered by the sliding one hour sensor.
+    """
+
+    entity_description: ChmiMergeSensorDescription
+
+    def __init__(
+        self,
+        coordinator: ChmiMergeCoordinator,
+        entry_id: str,
+        station: ChmiStationCoordinator,
+        description: ChmiMergeSensorDescription,
+    ) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, entry_id, station)
+        self.coordinator: ChmiMergeCoordinator = coordinator
+        self.entity_description = description
+        self._attr_unique_id = f"{entry_id}_{description.key}"
+
+    @property
+    def available(self) -> bool:
+        """Whether the location has a value in this window."""
+        return super().available and self.native_value is not None
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the accumulated millimetres of the window."""
+        state = self.coordinator.data
+        if state is None:
+            return None
+        if self.entity_description.window == "today":
+            return state.today_total
+        if self.entity_description.window == "rolling":
+            return state.rolling_total
+        return state.latest.millimetres if state.latest else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the window the value covers."""
+        state = self.coordinator.data
+        if state is None:
+            return {}
+        attributes: dict[str, Any] = {"product": "merge1h"}
+        window = self.entity_description.window
+        if window == "today":
+            if state.today_covered_to is not None:
+                attributes["covered_to"] = state.today_covered_to.isoformat()
+            attributes["hours_counted"] = state.today_hours
+            # Frames are occasionally published late or not at all.
+            attributes["hours_missing"] = (
+                state.today_hours_expected - state.today_hours
+            )
+        elif window == "rolling":
+            attributes["hours_counted"] = state.rolling_hours
+        elif state.latest is not None:
+            attributes["window_start"] = state.latest.window_start.isoformat()
+            attributes["window_end"] = state.latest.window_end.isoformat()
+        return attributes
 
 
 class ChmiAlertCountSensor(ChmiEntity, SensorEntity):

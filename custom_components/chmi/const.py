@@ -18,6 +18,7 @@ CONF_RADAR: Final = "radar"
 CONF_RADAR_VARIANT: Final = "radar_variant"
 CONF_ALERTS: Final = "alerts"
 CONF_TEXT_FORECAST: Final = "text_forecast"
+CONF_MERGE: Final = "merge_precipitation"
 
 RADAR_VARIANT_PNG: Final = "png"
 RADAR_VARIANT_MASKED: Final = "png_masked"
@@ -39,6 +40,7 @@ STATION_UPDATE_INTERVAL: Final = timedelta(minutes=15)
 OBSERVATION_MAX_AGE: Final = timedelta(hours=3)
 RADAR_UPDATE_INTERVAL: Final = timedelta(minutes=5)
 ALERTS_UPDATE_INTERVAL: Final = timedelta(minutes=10)
+MERGE_UPDATE_INTERVAL: Final = timedelta(minutes=10)
 TEXT_FORECAST_UPDATE_INTERVAL: Final = timedelta(hours=3)
 METADATA_MAX_AGE: Final = timedelta(hours=12)
 
@@ -55,6 +57,10 @@ NOW_DATA_URL: Final = (
 RADAR_URL: Final = (
     OPENDATA_BASE + "/meteorology/weather/radar/composite/maxz/{variant}"
     "/pacz2gmaps3.z_max3d.{date}.{time}.0.png"
+)
+MERGE_URL: Final = (
+    OPENDATA_BASE + "/meteorology/weather/radar/composite/merge1h/hdf5/"
+    "T_PASV23_C_OKPR_{stamp}.hdf"
 )
 TEXT_FORECAST_INDEX_URL: Final = OPENDATA_BASE + "/meteorology/weather/forecast/now/"
 TEXT_FORECAST_URL: Final = OPENDATA_BASE + "/meteorology/weather/forecast/now/{name}"
@@ -95,6 +101,20 @@ RADAR_MAX_LOOKBACK: Final = 8  # frames tried backwards when the newest is missi
 # Frames are published every five minutes; beyond this the held frame is stale
 # and the entities go unavailable instead of showing an old situation.
 RADAR_MAX_AGE: Final = timedelta(minutes=30)
+
+# ---------------------------------------------------------------------------
+# Merged 1h precipitation estimate (radar and rain gauges, kriging with
+# external drift).  Published every 10 minutes on the same 598x378 grid as the
+# radar composite; the file name carries the END of the 60 minute window.
+# ---------------------------------------------------------------------------
+MERGE_STEP: Final = timedelta(minutes=10)
+MERGE_WINDOW: Final = timedelta(hours=1)
+# Frames appear about 20 minutes after the end of their window.
+MERGE_MAX_LOOKBACK: Final = 6
+# Bounds the burst after a restart, when the whole day has to be filled in.
+MERGE_MAX_FETCHES_PER_UPDATE: Final = 26
+MERGE_ROLLING_WINDOW: Final = timedelta(hours=24)
+MERGE_DATASET: Final = "dataset1/data1"
 
 # Reflectivity classes of the ČHMÚ colour scale, ordered from the weakest to the
 # strongest class, 4 dBZ per step.  The colours were read out of the published

@@ -22,6 +22,7 @@ from .api.client import ChmiApiError, ChmiClient
 from .api.stations import StationCatalog, async_load_catalog
 from .const import (
     CONF_ALERTS,
+    CONF_MERGE,
     CONF_RADAR,
     CONF_RADAR_VARIANT,
     CONF_STATION,
@@ -126,6 +127,7 @@ class ChmiConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_STATION_NAME: station.name,
                     CONF_RADAR: first_entry,
                     CONF_RADAR_VARIANT: DEFAULT_RADAR_VARIANT,
+                    CONF_MERGE: first_entry,
                     CONF_ALERTS: first_entry,
                     CONF_TEXT_FORECAST: first_entry,
                 },
@@ -217,6 +219,9 @@ class ChmiOptionsFlow(OptionsFlow):
                         translation_key="radar_variant",
                     )
                 ),
+                vol.Required(
+                    CONF_MERGE, default=current.get(CONF_MERGE, True)
+                ): BooleanSelector(),
                 vol.Required(
                     CONF_ALERTS, default=current.get(CONF_ALERTS, True)
                 ): BooleanSelector(),

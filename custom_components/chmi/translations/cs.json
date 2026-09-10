@@ -35,7 +35,8 @@
           "radar": "Meteoradar",
           "radar_variant": "Radarový produkt",
           "alerts": "Výstrahy",
-          "text_forecast": "Textová předpověď pro kraj"
+          "text_forecast": "Textová předpověď pro kraj",
+          "merge_precipitation": "Srážky doma (radar a srážkoměry)"
         }
       }
     }
@@ -158,6 +159,15 @@
       },
       "precipitation_today": {
         "name": "Srážky dnes"
+      },
+      "precipitation_home_today": {
+        "name": "Srážky doma dnes"
+      },
+      "precipitation_home_1h": {
+        "name": "Srážky doma za hodinu"
+      },
+      "precipitation_home_24h": {
+        "name": "Srážky doma 24 h"
       }
     }
   }

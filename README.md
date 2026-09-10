@@ -17,6 +17,7 @@ Czech version of this document: [README.cs.md](README.cs.md)
 | --- | --- |
 | `weather.<station>` | Current conditions measured at the station. No forecast - see [Why there is no forecast](#why-there-is-no-forecast). |
 | `sensor.<station>_precipitation_today` | Precipitation accumulated since the local midnight, added up from the station's own samples. |
+| `sensor.<station>_precipitation_at_home_today` | Precipitation at your Home Assistant location since the local midnight, from the merged radar and rain gauge product. Also as a sliding `_1_h` and `_24_h` sensor. |
 | `sensor.<station>_*` | One sensor per measured element the station publishes: temperature (also 5 cm above ground, soil at 5-100 cm), humidity, pressure, dew point, wind speed, gusts and bearing, precipitation, snow depth, sunshine duration, global and diffuse radiation, cloud cover, visibility, present weather code. |
 | `camera.<station>_weather_radar` | The newest radar composite (5 minute steps) cropped to its georeferenced data area and drawn over the borders of the Czech regions. |
 | `sensor.<station>_radar_rain_rate` | Rain rate in mm/h read from the radar pixel above your Home Assistant location. |
@@ -51,8 +52,8 @@ configured are left out. Radar, warnings and the text forecast are country wide,
 so they are only enabled for the first station you add.
 
 - **⋮ → Configure** switches the radar between **maximum reflectivity** and
-  **precipitation reaching the ground** and toggles the warnings and the text
-  forecast.
+  **precipitation reaching the ground** and toggles the merged precipitation at
+  your location, the warnings and the text forecast.
 - **⋮ → Reconfigure** moves the entry to a different station. Entity ids and
   their recorded history are kept, because entities are identified by the
   config entry rather than by the station.
@@ -84,6 +85,9 @@ is needed.
 - Radar: `https://opendata.chmi.cz/meteorology/weather/radar/composite/maxz/png/`
   and `.../png_masked/`, file name
   `pacz2gmaps3.z_max3d.YYYYMMDD.HHMM.0.png` (UTC)
+- Merged precipitation:
+  `https://opendata.chmi.cz/meteorology/weather/radar/composite/merge1h/hdf5/`,
+  file name `T_PASV23_C_OKPR_YYYYMMDDhhmmss.hdf` (UTC, end of the window)
 - Warnings: `https://vystrahy-cr.chmi.cz/data/XOCZ50_OKPR.xml` (CAP v1.2).
   A warning is matched to your region through the CISORP geocodes of its areas,
   so district level and multi-region warnings are handled correctly.
@@ -114,6 +118,29 @@ carries the amount of the interval ending at its timestamp, so the one stamped
 exactly at midnight belongs to the previous day and is left out. In Czech local
 time the day starts at 22:00 UTC, so both daily files are read; they are the
 same files the other sensors use, and the requests are conditional.
+
+### Precipitation at your own location
+
+`merge1h` is the ČHMÚ product that combines the radar precipitation field with
+the readings of its own and partner rain gauges through kriging with external
+drift. Checked against 267 station-hour pairs, the value at a gauge location
+matches that gauge to 0.006 mm on average (largest difference 0.70 mm), so
+between gauges it is the radar field bent onto them — the closest thing open
+data gives to a gauge in your garden.
+
+The product only exists as **60 minute windows published every 10 minutes**, so:
+
+- `_1_h` is the newest window, i.e. the last 60 minutes,
+- `_today` and `_24_h` add up whole hours whose windows do not overlap, which
+  means the daily total lags up to one hour behind (the `covered_to` attribute
+  says how far it reaches, `hours_missing` how many windows ČHMÚ has not
+  published).
+
+The values are read from the HDF5 grid, so they are the exact millimetres of the
+product, not colour classes. Each file is about 35 kB; after a restart the whole
+running day is filled in (up to 24 files), then one file per hour is fetched.
+Reading needs [`pyfive`](https://pypi.org/project/pyfive/), a pure Python HDF5
+reader, which installs on Home Assistant OS without a compiler.
 
 ### How the weather condition is derived
 
@@ -146,7 +173,7 @@ forecast written by ČHMÚ forecasters is provided instead.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 144 tests, fixtures are real ČHMÚ responses
+pytest          # 155 tests, fixtures are real ČHMÚ responses
 ruff check .
 ```
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 
 import pytest
@@ -15,6 +16,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.chmi.const import (
     CONF_ALERTS,
+    CONF_MERGE,
     CONF_RADAR,
     CONF_RADAR_VARIANT,
     CONF_STATION,
@@ -31,8 +33,26 @@ NOW = "2026-09-09T11:52:00+00:00"
 OPENDATA = "https://opendata.chmi.cz"
 
 
-def _register(mocker: AiohttpClientMocker, *, alerts: str = "alerts_idle.xml") -> None:
-    """Register every request the integration makes during setup."""
+def _register(
+    mocker: AiohttpClientMocker,
+    *,
+    alerts: str = "alerts_idle.xml",
+    previous_day: bool = True,
+) -> None:
+    """Register every request the integration makes during setup.
+
+    In a Czech time zone the local day starts in the previous UTC file, so
+    those two URLs are requested as well; ``previous_day=False`` leaves them
+    for the caller to serve.
+    """
+    _register_merge(mocker)
+    if previous_day:
+        for dataset in ("10m", "1h"):
+            mocker.get(
+                f"{OPENDATA}/meteorology/climate/now/data"
+                f"/{dataset}-{STATION}-20260908.json",
+                status=404,
+            )
     mocker.get(
         f"{OPENDATA}/meteorology/climate/now/metadata/meta1-20260909.json",
         text=load_text("meta1.json"),
@@ -68,6 +88,21 @@ def _register(mocker: AiohttpClientMocker, *, alerts: str = "alerts_idle.xml") -
     )
 
 
+def _register_merge(mocker: AiohttpClientMocker) -> None:
+    """Serve the three captured merged frames; every other window is missing."""
+    for stamp, fixture in (
+        ("20260909120000", "merge_20260909_1200.hdf"),
+        ("20260909130000", "merge_20260909_1300.hdf"),
+        ("20260909140000", "merge_20260909_1400.hdf"),
+    ):
+        mocker.get(
+            f"{OPENDATA}/meteorology/weather/radar/composite/merge1h/hdf5"
+            f"/T_PASV23_C_OKPR_{stamp}.hdf",
+            content=load_bytes(fixture),
+        )
+    mocker.get(re.compile(r".*/merge1h/hdf5/.*\.hdf$"), status=404)
+
+
 @pytest.fixture(name="setup_entry")
 def setup_entry_fixture(
     hass: HomeAssistant,
@@ -77,7 +112,9 @@ def setup_entry_fixture(
 ) -> Callable:
     """Return a helper that sets the integration up."""
 
-    async def _setup(*, alerts: str = "alerts_idle.xml") -> MockConfigEntry:
+    async def _setup(
+        *, alerts: str = "alerts_idle.xml", merge: bool = True
+    ) -> MockConfigEntry:
         freezer.move_to(NOW)
         hass.config.latitude = 50.0693
         hass.config.longitude = 14.4278
@@ -92,6 +129,7 @@ def setup_entry_fixture(
                 CONF_STATION_NAME: STATION_NAME,
                 CONF_RADAR: True,
                 CONF_RADAR_VARIANT: RADAR_VARIANT_MASKED,
+                CONF_MERGE: merge,
                 CONF_ALERTS: True,
                 CONF_TEXT_FORECAST: True,
             },
@@ -154,7 +192,7 @@ async def test_precipitation_today_spans_both_utc_days(
     freezer.move_to(NOW)  # 2026-09-09 13:52 local, so the day started at 22:00Z
     hass.config.latitude = 50.0693
     hass.config.longitude = 14.4278
-    _register(aioclient_mock)
+    _register(aioclient_mock, previous_day=False)
 
     def envelope(*rows):
         return json.dumps(
@@ -189,6 +227,7 @@ async def test_precipitation_today_spans_both_utc_days(
             CONF_STATION_NAME: STATION_NAME,
             CONF_RADAR: False,
             CONF_RADAR_VARIANT: RADAR_VARIANT_MASKED,
+            CONF_MERGE: False,
             CONF_ALERTS: False,
             CONF_TEXT_FORECAST: False,
         },
@@ -205,6 +244,81 @@ async def test_precipitation_today_spans_both_utc_days(
     # before; 1.5 mm from the previous UTC day still counts.
     assert float(state.state) >= 1.5
     assert float(state.state) < 9.9
+
+
+async def test_merge_precipitation_at_home(
+    hass: HomeAssistant,
+    custom_integration: None,
+    aioclient_mock: AiohttpClientMocker,
+    freezer,
+) -> None:
+    """The merged product accumulates the completed hours at the home location."""
+    from custom_components.chmi.api.merge import sample_frame
+
+    await hass.config.async_set_time_zone("Europe/Prague")
+    freezer.move_to("2026-09-09T14:30:00+00:00")
+    # Churáňov, where the captured frames carry rain.
+    hass.config.latitude = 49.068333
+    hass.config.longitude = 13.615278
+    _register(aioclient_mock)
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=STATION_NAME,
+        unique_id=STATION,
+        data={
+            CONF_STATION: STATION,
+            CONF_STATION_NAME: STATION_NAME,
+            CONF_RADAR: False,
+            CONF_RADAR_VARIANT: RADAR_VARIANT_MASKED,
+            CONF_MERGE: True,
+            CONF_ALERTS: False,
+            CONF_TEXT_FORECAST: False,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    expected = [
+        sample_frame(load_bytes(name), 49.068333, 13.615278).millimetres
+        for name in (
+            "merge_20260909_1200.hdf",
+            "merge_20260909_1300.hdf",
+            "merge_20260909_1400.hdf",
+        )
+    ]
+
+    today = hass.states.get(_entity_id(hass, entry, "precipitation_home_today"))
+    assert today is not None
+    assert float(today.state) == pytest.approx(round(sum(expected), 1), abs=0.05)
+    assert today.attributes["hours_counted"] == 3
+    assert today.attributes["covered_to"] == "2026-09-09T14:00:00+00:00"
+    assert today.attributes["product"] == "merge1h"
+
+    hour = hass.states.get(_entity_id(hass, entry, "precipitation_home_1h"))
+    assert float(hour.state) == pytest.approx(expected[-1], abs=0.05)
+    assert hour.attributes["window_end"] == "2026-09-09T14:00:00+00:00"
+    assert hour.attributes["window_start"] == "2026-09-09T13:00:00+00:00"
+
+    rolling = hass.states.get(_entity_id(hass, entry, "precipitation_home_24h"))
+    assert float(rolling.state) == pytest.approx(round(sum(expected), 1), abs=0.05)
+    assert rolling.attributes["hours_counted"] == 3
+
+
+async def test_merge_can_be_switched_off(
+    hass: HomeAssistant, setup_entry: Callable
+) -> None:
+    """Without the toggle no merged precipitation entity is created."""
+    entry = await setup_entry(merge=False)
+    registry = er.async_get(hass)
+    keys = {
+        entity.unique_id
+        for entity in registry.entities.values()
+        if entity.platform == DOMAIN
+    }
+    assert f"{entry.entry_id}_precipitation_home_today" not in keys
+    assert entry.runtime_data.merge is None
 
 
 async def test_units_are_converted(hass: HomeAssistant, setup_entry: Callable) -> None:
