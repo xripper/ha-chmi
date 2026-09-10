@@ -306,6 +306,52 @@ async def test_merge_precipitation_at_home(
     assert rolling.attributes["hours_counted"] == 3
 
 
+async def test_merge_follows_the_home_location(
+    hass: HomeAssistant,
+    custom_integration: None,
+    aioclient_mock: AiohttpClientMocker,
+    freezer,
+) -> None:
+    """Moving the Home Assistant location re-reads the day at the new point."""
+    await hass.config.async_set_time_zone("Europe/Prague")
+    freezer.move_to("2026-09-09T14:30:00+00:00")
+    hass.config.latitude = 50.0693  # Praha, on the edge of the rain band
+    hass.config.longitude = 14.4278
+    _register(aioclient_mock)
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=STATION_NAME,
+        unique_id=STATION,
+        data={
+            CONF_STATION: STATION,
+            CONF_STATION_NAME: STATION_NAME,
+            CONF_RADAR: False,
+            CONF_RADAR_VARIANT: RADAR_VARIANT_MASKED,
+            CONF_MERGE: True,
+            CONF_ALERTS: False,
+            CONF_TEXT_FORECAST: False,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    entity_id = _entity_id(hass, entry, "precipitation_home_today")
+    in_prague = float(hass.states.get(entity_id).state)
+
+    # Move home to Churáňov, where the same frames carry much more rain.
+    hass.config.latitude = 49.068333
+    hass.config.longitude = 13.615278
+    await entry.runtime_data.merge.async_refresh()
+    await hass.async_block_till_done()
+
+    in_churanov = float(hass.states.get(entity_id).state)
+    assert in_churanov > in_prague
+    # The stored hours were re-read, not mixed with the ones from Prague.
+    assert entry.runtime_data.merge.data.today_hours == 3
+
+
 async def test_merge_can_be_switched_off(
     hass: HomeAssistant, setup_entry: Callable
 ) -> None:

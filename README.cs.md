@@ -133,6 +133,10 @@ proto:
   denní úhrn má zpoždění až jednu hodinu (atribut `covered_to` říká, kam sahá,
   `hours_missing` kolik oken ČHMÚ nevydal).
 
+Vzorkuje se **poloha Domov z Home Assistantu** (Nastavení → Systém → Obecné),
+ne poloha stanice; po její změně se probíhající den načte znovu pro nový bod.
+Staniční senzor `srazky_dnes` zůstává u stanice.
+
 Hodnoty se čtou z HDF5 mřížky, jsou to tedy přesné milimetry produktu, ne
 barevné třídy. Soubor má ~35 kB; po restartu se doplní celý probíhající den
 (až 24 souborů), pak se stahuje jeden soubor za hodinu. Ke čtení slouží
@@ -170,7 +174,7 @@ předpověď psanou meteorology ČHMÚ.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 155 testů, fixtures jsou reálné odpovědi ČHMÚ
+pytest          # 156 testů, fixtures jsou reálné odpovědi ČHMÚ
 ruff check .
 ```
 

@@ -136,6 +136,10 @@ The product only exists as **60 minute windows published every 10 minutes**, so:
   says how far it reaches, `hours_missing` how many windows ČHMÚ has not
   published).
 
+The point sampled is the **home location of your Home Assistant** (Settings →
+System → General), not the station; moving it re-reads the running day at the
+new point. The station-based `precipitation_today` sensor stays at the station.
+
 The values are read from the HDF5 grid, so they are the exact millimetres of the
 product, not colour classes. Each file is about 35 kB; after a restart the whole
 running day is filled in (up to 24 files), then one file per hour is fetched.
@@ -173,7 +177,7 @@ forecast written by ČHMÚ forecasters is provided instead.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-test.txt
-pytest          # 155 tests, fixtures are real ČHMÚ responses
+pytest          # 156 tests, fixtures are real ČHMÚ responses
 ruff check .
 ```
 

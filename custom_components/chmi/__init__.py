@@ -116,12 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ChmiConfigEntry) -> bool
         runtime.radar = radar
 
     if options.get(CONF_MERGE, True):
-        merge = ChmiMergeCoordinator(
-            hass,
-            entry,
-            shared.client,
-            (hass.config.latitude, hass.config.longitude),
-        )
+        merge = ChmiMergeCoordinator(hass, entry, shared.client)
         await merge.async_config_entry_first_refresh()
         runtime.merge = merge
 

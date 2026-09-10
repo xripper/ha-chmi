@@ -234,13 +234,9 @@ class ChmiMergeCoordinator(DataUpdateCoordinator[MergeState]):
     """
 
     def __init__(
-        self,
-        hass: HomeAssistant,
-        entry: ConfigEntry,
-        client: ChmiClient,
-        location: tuple[float, float],
+        self, hass: HomeAssistant, entry: ConfigEntry, client: ChmiClient
     ) -> None:
-        """Initialise the coordinator for one location."""
+        """Initialise the coordinator for the Home Assistant location."""
         super().__init__(
             hass,
             _LOGGER,
@@ -249,7 +245,7 @@ class ChmiMergeCoordinator(DataUpdateCoordinator[MergeState]):
             update_interval=MERGE_UPDATE_INTERVAL,
         )
         self._client = client
-        self._location = location
+        self._location = (hass.config.latitude, hass.config.longitude)
         self._hourly: dict[datetime, float] = {}
         self._unpublished: dict[datetime, int] = {}
 
@@ -257,6 +253,7 @@ class ChmiMergeCoordinator(DataUpdateCoordinator[MergeState]):
         """Fetch the frames that are missing and add the windows up."""
         now = dt_util.utcnow()
         midnight = dt_util.as_utc(dt_util.start_of_local_day())
+        self._follow_home_location()
 
         today_hours = hour_ends_between(midnight, now)
         rolling_hours = hour_ends_between(now - MERGE_ROLLING_WINDOW, now)
@@ -282,6 +279,24 @@ class ChmiMergeCoordinator(DataUpdateCoordinator[MergeState]):
             rolling_total=round(sum(rolling), 1) if rolling else None,
             rolling_hours=len(rolling),
         )
+
+    def _follow_home_location(self) -> None:
+        """Pick up a change of the Home Assistant location.
+
+        The stored hourly values belong to the point they were sampled at, so
+        they are dropped and read again when the home location moves.
+        """
+        location = (self.hass.config.latitude, self.hass.config.longitude)
+        if self._location == location:
+            return
+        _LOGGER.debug(
+            "Home location moved from %s to %s, re-reading the day",
+            self._location,
+            location,
+        )
+        self._hourly.clear()
+        self._unpublished.clear()
+        self._location = location
 
     def _prune(self, oldest_wanted: datetime) -> None:
         """Forget windows that no sensor covers any more."""
