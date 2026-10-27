@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Requirements are resolved when a user installs the integration, so a new
+  # upstream release can break installs without a commit here (pyfive 1.3.0
+  # pulled in numcodecs, which has no musl wheel). Check weekly.
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-test.txt ruff \
+            $(jq -r '.requirements[]' custom_components/chmi/manifest.json)
+      - run: ruff check .
+      - run: pytest -q
+
+  ha-install:
+    # Install the manifest requirements inside the real Home Assistant image
+    # (Alpine/musl) the same way Home Assistant does it at setup time.
+    name: Requirements in HA ${{ matrix.tag }} (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+        tag: [stable, beta]
+    container: ghcr.io/home-assistant/home-assistant:${{ matrix.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install requirements with Home Assistant's installer
+        run: |
+          python3 - <<'EOF'
+          import json
+          import os
+          import sys
+
+          import homeassistant
+          from homeassistant.util.package import install_package
+
+          constraints = os.path.join(
+              os.path.dirname(homeassistant.__file__), "package_constraints.txt"
+          )
+          with open("custom_components/chmi/manifest.json") as file:
+              requirements = json.load(file)["requirements"]
+          failed = [
+              req
+              for req in requirements
+              if not install_package(req, constraints=constraints)
+          ]
+          if failed:
+              sys.exit(f"Requirements not installable: {failed}")
+          EOF
+      - name: Import the integration
+        run: |
+          python3 -c "import custom_components.chmi, custom_components.chmi.api.merge"
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration
