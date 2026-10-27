@@ -33,7 +33,9 @@ jobs:
 
   ha-install:
     # Install the manifest requirements inside the real Home Assistant image
-    # (Alpine/musl) the same way Home Assistant does it at setup time.
+    # (Alpine/musl) the same way Home Assistant does it at setup time. The
+    # image runs through `docker run` rather than `container:` because GitHub
+    # cannot run JavaScript actions inside Alpine containers on arm64.
     name: Requirements in HA ${{ matrix.tag }} (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -41,12 +43,12 @@ jobs:
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
         tag: [stable, beta]
-    container: ghcr.io/home-assistant/home-assistant:${{ matrix.tag }}
     steps:
       - uses: actions/checkout@v4
       - name: Install requirements with Home Assistant's installer
         run: |
-          python3 - <<'EOF'
+          docker run --rm -i -v "$PWD:/repo:ro" -w /repo --entrypoint python3 \
+            ghcr.io/home-assistant/home-assistant:${{ matrix.tag }} - <<'EOF'
           import json
           import os
           import sys
@@ -66,10 +68,11 @@ jobs:
           ]
           if failed:
               sys.exit(f"Requirements not installable: {failed}")
+
+          sys.path.insert(0, ".")
+          import custom_components.chmi.api.merge  # noqa: E402, F401
+          print("Installed:", ", ".join(requirements))
           EOF
-      - name: Import the integration
-        run: |
-          python3 -c "import custom_components.chmi, custom_components.chmi.api.merge"
 
   hassfest:
     runs-on: ubuntu-latest
