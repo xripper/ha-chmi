@@ -10,7 +10,7 @@ time to find out.
 ## Working environment
 
 - Test venv: `/tmp/chmi-venv` (Python 3.12). Recreate with
-  `/opt/homebrew/bin/python3.12 -m venv /tmp/chmi-venv && /tmp/chmi-venv/bin/pip install -r requirements-test.txt defusedxml pyfive ruff`.
+  `/opt/homebrew/bin/python3.12 -m venv /tmp/chmi-venv && /tmp/chmi-venv/bin/pip install -r requirements-test.txt defusedxml pyfive==1.2.1 ruff`.
   The system `python3` is 3.9 and cannot even parse this code (`type` aliases,
   `slots=True`).
 - `pytest-homeassistant-custom-component` pins **HA 2025.1.4** on Python 3.12.
@@ -22,6 +22,13 @@ time to find out.
   `aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())`.
 - `pyfive`/`defusedxml` are declared in the manifest but not pulled in by the
   test harness, so they are installed into the venv by hand.
+- **Manifest requirements must install on HA OS** (Alpine/musl, no compiler):
+  every transitive dependency needs a musllinux wheel. `pyfive` 1.3.0 added
+  `numcodecs`, which has none, and broke setup with `Requirements for chmi not
+  found` — hence the exact pin. CI's `ha-install` job installs the manifest
+  inside the real HA image (amd64 + arm64, stable + beta) and runs weekly to
+  catch upstream releases. Do not list HA's own dependencies (Pillow, astral):
+  hassfest rejects them.
 - `conftest.py` starts the pycares helper thread up front; without it the HA
   harness reports it as a leaked thread in whichever test runs first.
 
